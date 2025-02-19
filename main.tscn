@@ -1,0 +1,63 @@
+[gd_scene load_steps=10 format=3 uid="uid://cnk1inmvelj4x"]
+
+[ext_resource type="RDShaderFile" uid="uid://clls6xc0k2y1f" path="res://base_texture.glsl" id="1_h2yge"]
+[ext_resource type="Script" uid="uid://df8wsrhnsmsm3" path="res://MeshTextureRd.cs" id="3_lquwl"]
+
+[sub_resource type="PrismMesh" id="PrismMesh_h2yge"]
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_0xm2m"]
+load_path = "res://.godot/imported/icon.svg-218a8f2b3041327d8a5756f3a245f83b.ctex"
+
+[sub_resource type="Texture2D" id="Texture2D_7mycd"]
+resource_local_to_scene = false
+resource_name = ""
+script = ExtResource("3_lquwl")
+Size = Vector2i(256, 256)
+ClearColor = Color(0.360549, 0.582093, 0.477992, 1)
+Mesh = SubResource("PrismMesh_h2yge")
+Texture = SubResource("CompressedTexture2D_0xm2m")
+Projection = Projection(-0.605, -1.285, 0, 0, 1.09, -1.67, 0.11, 0, 0.755, 0.035, 1.2, 0, 0.025, -0.26, 0, 1.355)
+Glsl = ExtResource("1_h2yge")
+metadata/_custom_type_script = "uid://delyovxoqvijt"
+
+[sub_resource type="TorusMesh" id="TorusMesh_1bvp3"]
+
+[sub_resource type="Texture2D" id="Texture2D_272bh"]
+resource_local_to_scene = false
+resource_name = ""
+script = ExtResource("3_lquwl")
+Size = Vector2i(256, 256)
+ClearColor = Color(0.597297, 0.534462, 0.906645, 1)
+Mesh = SubResource("TorusMesh_1bvp3")
+Texture = SubResource("CompressedTexture2D_0xm2m")
+Projection = Projection(-0.71, -0.91, 0.5, 0.01, 0.25, 1.53, 0.315, 0, 1.43, -0.135, 0.48, 0.14, 0.085, 0.02, 0.75, 1.845)
+Glsl = ExtResource("1_h2yge")
+metadata/_custom_type_script = "uid://delyovxoqvijt"
+
+[sub_resource type="QuadMesh" id="QuadMesh_lquwl"]
+
+[sub_resource type="Texture2D" id="Texture2D_5vw27"]
+resource_local_to_scene = false
+resource_name = ""
+script = ExtResource("3_lquwl")
+Size = Vector2i(256, 256)
+ClearColor = Color(1, 1, 1, 0)
+Mesh = SubResource("QuadMesh_lquwl")
+Texture = SubResource("CompressedTexture2D_0xm2m")
+Projection = Projection(-1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
+Glsl = ExtResource("1_h2yge")
+metadata/_custom_type_script = "uid://delyovxoqvijt"
+
+[node name="Node2D" type="Node2D"]
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+position = Vector2(770, 369)
+texture = SubResource("Texture2D_7mycd")
+
+[node name="Sprite2D2" type="Sprite2D" parent="."]
+position = Vector2(518, 368.5)
+texture = SubResource("Texture2D_272bh")
+
+[node name="Sprite2D3" type="Sprite2D" parent="."]
+position = Vector2(653, 238)
+texture = SubResource("Texture2D_5vw27")
