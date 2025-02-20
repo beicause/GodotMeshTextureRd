@@ -36,65 +36,75 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         Binding = 1
     };
 
-    [Export] public Vector2I Size { get; set { field = value; Update(); } } = new(256, 256);
+    private bool _piplelineDirty = false;
+    private bool _uniformDirty = false;
+
+    [Export] public Vector2I Size { get; set { field = value; QueueUpdatePipleline(); } } = new(256, 256);
     [Export]
-    public Color ClearColor
-    {
-        get; set
-        {
-            field = value;
-            Draw();
-            EmitChanged();
-        }
-    } = Colors.Transparent;
+    public Color ClearColor { get; set { field = value; CallDeferred(nameof(Update)); } } = Colors.Transparent;
     [Export]
     public Mesh Mesh
     {
         get; set
         {
-            if (field != null) field.Changed -= Update;
+            if (field != null) field.Changed -= QueueUpdatePipleline;
             field = value;
-            Update();
-            if (field != null) field.Changed += Update;
+            _piplelineDirty = true;
+            QueueUpdatePipleline();
+            if (field != null) field.Changed += QueueUpdatePipleline;
         }
     }
     [Export]
-    public Texture2D Texture
-    {
-        get; set
-        {
-            field = value; ResetUniform(); Draw(); EmitChanged();
-        }
-    }
+    public Texture2D Texture { get; set { field = value; _uniformDirty = true; CallDeferred(nameof(Update)); } }
     [Export]
-    public Projection Projection
-    {
-        get; set
-        {
-            field = value; ResetUniform(); Draw(); EmitChanged();
-        }
-    } = Projection.Identity;
+    public Projection Projection { get; set { field = value; _uniformDirty = true; CallDeferred(nameof(Update)); } } = Projection.Identity;
     [Export]
     public RDShaderFile Glsl
     {
         get; set
         {
-            if (field != null) field.Changed -= Update;
+            if (field != null) field.Changed -= QueueUpdatePipleline;
             field = value;
-            Update();
-            if (field != null) field.Changed += Update;
+            QueueUpdatePipleline();
+            if (field != null) field.Changed += QueueUpdatePipleline;
         }
     } = GD.Load<RDShaderFile>("res://glsl/base_texture.glsl");
 
     private void Update()
     {
-        Init(); ResetUniform(); Draw(); EmitChanged();
+        if (_piplelineDirty)
+        {
+            InitPipeline();
+            ResetUniform();
+            Draw();
+            EmitChanged();
+            _piplelineDirty = false;
+            _uniformDirty = false;
+        }
+        else if (_uniformDirty)
+        {
+            ResetUniform();
+            Draw();
+            EmitChanged();
+            _uniformDirty = false;
+        }
+        else
+        {
+            Draw();
+            EmitChanged();
+        }
+    }
+
+    private void QueueUpdatePipleline()
+    {
+        _piplelineDirty = true;
+        CallDeferred(nameof(Update));
     }
 
     public MeshTextureRd()
     {
         SamplerRid = Rd.SamplerCreate(new());
-        Glsl.Changed += Update;
+        Glsl.Changed += QueueUpdatePipleline;
     }
 
     private void Clean()
@@ -119,7 +129,7 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         base.Dispose(disposing);
     }
 
-    public void Init()
+    public void InitPipeline()
     {
         if (Mesh == null ||
             Glsl == null ||
@@ -271,6 +281,7 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         SamplerRid = Rd.SamplerCreate(new());
     }
 }
+
 
 static class Ext
 {
