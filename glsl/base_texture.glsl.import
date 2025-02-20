@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://clls6xc0k2y1f"
+path="res://.godot/imported/base_texture.glsl-50a15802fecf47fa0628157b849c2c08.res"
+
+[deps]
+
+source_file="res://glsl/base_texture.glsl"
+dest_files=["res://.godot/imported/base_texture.glsl-50a15802fecf47fa0628157b849c2c08.res"]
+
+[params]
+

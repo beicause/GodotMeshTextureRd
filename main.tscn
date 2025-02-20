@@ -1,6 +1,6 @@
 [gd_scene load_steps=10 format=3 uid="uid://cnk1inmvelj4x"]
 
-[ext_resource type="RDShaderFile" uid="uid://clls6xc0k2y1f" path="res://base_texture.glsl" id="1_h2yge"]
+[ext_resource type="RDShaderFile" uid="uid://clls6xc0k2y1f" path="res://glsl/base_texture.glsl" id="1_h2yge"]
 [ext_resource type="Script" uid="uid://df8wsrhnsmsm3" path="res://MeshTextureRd.cs" id="3_lquwl"]
 
 [sub_resource type="PrismMesh" id="PrismMesh_h2yge"]
