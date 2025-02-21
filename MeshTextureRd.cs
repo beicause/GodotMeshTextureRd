@@ -13,18 +13,19 @@ using RS = Godot.RenderingServer;
 public partial class MeshTextureRd : Texture2D, ISerializationListener
 {
     public static readonly RD Rd = RS.GetRenderingDevice();
-    private Rid FrameBufferRid { get; set { if (field.IsValid) Rd.FreeRid(field); field = value; } }
-    private Rid VertexArrayRid { get; set { if (field.IsValid) Rd.FreeRid(field); field = value; } }
-    private Rid IndexArrayRid { get; set { if (field.IsValid) Rd.FreeRid(field); field = value; } }
+    private Rid FrameBufferTextureRid { get; set { if (field.IsValid) { RS.FreeRid(TextureRd); Rd.FreeRid(field); } field = value; } }
+    private Rid FrameBufferRid;
+    private Rid VertexArrayRid;
+    private Rid IndexArrayRid;
     private Rid ShaderRid { get; set { if (field.IsValid) Rd.FreeRid(field); field = value; } }
-    private Rid PipelineRid { get; set { if (field.IsValid) Rd.FreeRid(field); field = value; } }
+    private Rid PipelineRid;
     private Rid SamplerRid { get; set { if (field.IsValid) Rd.FreeRid(field); field = value; } }
     private Rid UniformBufferMatrixRid { get; set { if (field.IsValid) Rd.FreeRid(field); field = value; } }
-    private Rid UniformSetRid { get; set { if (field.IsValid) Rd.FreeRid(field); field = value; } }
+    private Rid UniformSetRid;
     private Rid IndexBufferRid { get; set { if (field.IsValid) Rd.FreeRid(field); field = value; } }
     private Rid VertexBufferPosRid { get; set { if (field.IsValid) Rd.FreeRid(field); field = value; } }
     private Rid VertexBufferUvRid { get; set { if (field.IsValid) Rd.FreeRid(field); field = value; } }
-    private Rid TextureRd { get; set { if (field.IsValid) { Rd.FreeRid(RS.TextureGetRdTexture(field)); RS.FreeRid(field); } field = value; } }
+    private Rid TextureRd;
     private RDUniform _uniformMatrix = new()
     {
         UniformType = RD.UniformType.UniformBuffer,
@@ -36,22 +37,21 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         Binding = 1
     };
 
-    private bool _piplelineDirty = false;
+    private bool _pipelineDirty = false;
     private bool _uniformDirty = false;
-
-    [Export] public Vector2I Size { get; set { field = value; QueueUpdatePipleline(); } } = new(256, 256);
+    [Export] public Vector2I Size { get; set { field = value; QueueUpdatePipeline(); } } = new(256, 256);
     [Export]
-    public Color ClearColor { get; set { field = value; CallDeferred(nameof(Update)); } } = Colors.Transparent;
+    public Color ClearColor { get; set { field = value; Update(); } } = Colors.Transparent;
     [Export]
     public Mesh Mesh
     {
         get; set
         {
-            if (field != null) field.Changed -= QueueUpdatePipleline;
+            if (field != null) field.Changed -= QueueUpdatePipeline;
             field = value;
-            _piplelineDirty = true;
-            QueueUpdatePipleline();
-            if (field != null) field.Changed += QueueUpdatePipleline;
+            _pipelineDirty = true;
+            QueueUpdatePipeline();
+            if (field != null) field.Changed += QueueUpdatePipeline;
         }
     }
     [Export]
@@ -63,22 +63,22 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
     {
         get; set
         {
-            if (field != null) field.Changed -= QueueUpdatePipleline;
+            if (field != null) field.Changed -= QueueUpdatePipeline;
             field = value;
-            QueueUpdatePipleline();
-            if (field != null) field.Changed += QueueUpdatePipleline;
+            QueueUpdatePipeline();
+            if (field != null) field.Changed += QueueUpdatePipeline;
         }
     } = GD.Load<RDShaderFile>("res://glsl/base_texture.glsl");
 
     private void Update()
     {
-        if (_piplelineDirty)
+        if (_pipelineDirty)
         {
             InitPipeline();
             ResetUniform();
             Draw();
             EmitChanged();
-            _piplelineDirty = false;
+            _pipelineDirty = false;
             _uniformDirty = false;
         }
         else if (_uniformDirty)
@@ -95,20 +95,21 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         }
     }
 
-    private void QueueUpdatePipleline()
+    private void QueueUpdatePipeline()
     {
-        _piplelineDirty = true;
+        _pipelineDirty = true;
         CallDeferred(nameof(Update));
     }
 
     public MeshTextureRd()
     {
         SamplerRid = Rd.SamplerCreate(new());
-        Glsl.Changed += QueueUpdatePipleline;
+        Glsl.Changed += QueueUpdatePipeline;
     }
 
     private void Clean()
     {
+        FrameBufferTextureRid = new();
         TextureRd = new();
         FrameBufferRid = new();
         VertexArrayRid = new();
@@ -150,7 +151,7 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         texFormat.Format = RD.DataFormat.R8G8B8A8Unorm;
         texFormat.UsageBits = RD.TextureUsageBits.SamplingBit | RD.TextureUsageBits.ColorAttachmentBit;
 
-        var frameBufferTextureRid = Rd.TextureCreate(texFormat, texView);
+        FrameBufferTextureRid = Rd.TextureCreate(texFormat, texView);
 
         var surfaceArray = Mesh.SurfaceGetArrays(0);
         var vertexArray = surfaceArray[(int)Mesh.ArrayType.Vertex];
@@ -202,7 +203,7 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         var blend = new RDPipelineColorBlendState();
         blend.Attachments.Add(new RDPipelineColorBlendStateAttachment());
 
-        FrameBufferRid = Rd.FramebufferCreate([frameBufferTextureRid]);
+        FrameBufferRid = Rd.FramebufferCreate([FrameBufferTextureRid]);
 
         PipelineRid = Rd.RenderPipelineCreate(
                    ShaderRid,
@@ -214,7 +215,7 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
                    new RDPipelineDepthStencilState(),
                    blend
                );
-        TextureRd = RS.TextureRdCreate(frameBufferTextureRid);
+        TextureRd = RS.TextureRdCreate(FrameBufferTextureRid);
     }
 
     private void ResetUniform()
