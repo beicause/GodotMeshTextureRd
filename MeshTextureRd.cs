@@ -13,7 +13,15 @@ using RS = Godot.RenderingServer;
 public partial class MeshTextureRd : Texture2D, ISerializationListener
 {
     public static readonly RD Rd = RS.GetRenderingDevice();
-    private Rid FrameBufferTextureRid { get; set { if (field.IsValid) { RS.FreeRid(TextureRd); Rd.FreeRid(field); } field = value; } }
+    private Rid FrameBufferTextureRid
+    {
+        get; set
+        {
+            RS.TextureReplace(TextureRd, value.IsValid ? RS.TextureRdCreate(value) : RS.Texture2DPlaceholderCreate());
+            if (field.IsValid) { Rd.FreeRid(field); }
+            field = value;
+        }
+    }
     private Rid FrameBufferRid;
     private Rid VertexArrayRid;
     private Rid IndexArrayRid;
@@ -25,7 +33,7 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
     private Rid IndexBufferRid { get; set { if (field.IsValid) Rd.FreeRid(field); field = value; } }
     private Rid VertexBufferPosRid { get; set { if (field.IsValid) Rd.FreeRid(field); field = value; } }
     private Rid VertexBufferUvRid { get; set { if (field.IsValid) Rd.FreeRid(field); field = value; } }
-    private Rid TextureRd;
+    private readonly Rid TextureRd = RS.Texture2DPlaceholderCreate();
     private RDUniform _uniformMatrix = new()
     {
         UniformType = RD.UniformType.UniformBuffer,
@@ -38,7 +46,7 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
     };
 
     private bool _pipelineDirty = false;
-    private bool _uniformDirty = false;
+    private bool _uniformSetDirty = false;
     [Export] public Vector2I Size { get; set { field = value; QueueUpdatePipeline(); } } = new(256, 256);
     [Export]
     public Color ClearColor { get; set { field = value; Update(); } } = Colors.Transparent;
@@ -49,15 +57,23 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         {
             if (field != null) field.Changed -= QueueUpdatePipeline;
             field = value;
-            _pipelineDirty = true;
             QueueUpdatePipeline();
             if (field != null) field.Changed += QueueUpdatePipeline;
         }
     }
     [Export]
-    public Texture2D Texture { get; set { field = value; _uniformDirty = true; CallDeferred(nameof(Update)); } }
+    public Texture2D Texture
+    {
+        get; set
+        {
+            if (field != null) field.Changed -= QueueUpdateUniformSet;
+            field = value;
+            QueueUpdateUniformSet();
+            if (field != null) field.Changed += QueueUpdateUniformSet;
+        }
+    }
     [Export]
-    public Projection Projection { get; set { field = value; _uniformDirty = true; CallDeferred(nameof(Update)); } } = Projection.Identity;
+    public Projection Projection { get; set { field = value; _uniformSetDirty = true; CallDeferred(nameof(Update)); } } = Projection.Identity;
     [Export]
     public RDShaderFile Glsl
     {
@@ -79,14 +95,14 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
             Draw();
             EmitChanged();
             _pipelineDirty = false;
-            _uniformDirty = false;
+            _uniformSetDirty = false;
         }
-        else if (_uniformDirty)
+        else if (_uniformSetDirty)
         {
             ResetUniform();
             Draw();
             EmitChanged();
-            _uniformDirty = false;
+            _uniformSetDirty = false;
         }
         else
         {
@@ -101,16 +117,21 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         CallDeferred(nameof(Update));
     }
 
+    private void QueueUpdateUniformSet()
+    {
+        _uniformSetDirty = true;
+        CallDeferred(nameof(Update));
+    }
+
     public MeshTextureRd()
     {
         SamplerRid = Rd.SamplerCreate(new());
         Glsl.Changed += QueueUpdatePipeline;
     }
 
-    private void Clean()
+    public void Clean()
     {
         FrameBufferTextureRid = new();
-        TextureRd = new();
         FrameBufferRid = new();
         VertexArrayRid = new();
         IndexArrayRid = new();
@@ -127,6 +148,7 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
     protected override void Dispose(bool disposing)
     {
         Clean();
+        RS.FreeRid(TextureRd);
         base.Dispose(disposing);
     }
 
@@ -215,7 +237,6 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
                    new RDPipelineDepthStencilState(),
                    blend
                );
-        TextureRd = RS.TextureRdCreate(FrameBufferTextureRid);
     }
 
     private void ResetUniform()
