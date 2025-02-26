@@ -241,7 +241,7 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
 
     private void ResetUniform()
     {
-        if (Texture == null || !Texture.GetRid().IsValid || !ShaderRid.IsValid)
+        if (!SamplerRid.IsValid || Texture == null || !Texture.GetRid().IsValid || !ShaderRid.IsValid)
         {
             return;
         }
@@ -251,16 +251,20 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
             Projection[2][0], Projection[2][1], Projection[2][2], Projection[2][3],
             Projection[3][0], Projection[3][1], Projection[3][2], Projection[3][3]
         };
-        UniformBufferMatrixRid = Rd.UniformBufferCreate(4 * 4 * 4, matrixArray.CastSpan<float, byte>().ToArray());
-
-        _uniformMatrix.ClearIds();
-        _uniformMatrix.AddId(UniformBufferMatrixRid);
+        var bytes = matrixArray.CastSpan<float, byte>().ToArray();
+        if (!UniformBufferMatrixRid.IsValid)
+        {
+            UniformBufferMatrixRid = Rd.UniformBufferCreate((uint)bytes.Length, bytes);
+            _uniformMatrix.ClearIds();
+            _uniformMatrix.AddId(UniformBufferMatrixRid);
+        }
+        else Rd.BufferUpdate(UniformBufferMatrixRid, 0, (uint)bytes.Length, bytes);
 
         _uniformTex.ClearIds();
         _uniformTex.AddId(SamplerRid);
         _uniformTex.AddId(RS.TextureGetRdTexture(Texture.GetRid()));
 
-        UniformSetRid = Rd.UniformSetCreate([_uniformMatrix, _uniformTex], ShaderRid, 0);
+        UniformSetRid = UniformSetCacheRD.GetCache(ShaderRid, 0, [_uniformMatrix, _uniformTex]);
     }
 
     public void Draw()
@@ -296,7 +300,10 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         return Size.Y;
     }
 
-    public void OnBeforeSerialize() { }
+    public void OnBeforeSerialize()
+    {
+        UniformBufferMatrixRid = new();
+    }
 
     public void OnAfterDeserialize()
     {
