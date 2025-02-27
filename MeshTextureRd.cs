@@ -10,7 +10,7 @@ using RS = Godot.RenderingServer;
 
 [GlobalClass]
 [Tool]
-public partial class MeshTextureRd : Texture2D
+public partial class MeshTextureRd : Texture2D, ISerializationListener
 {
     public static readonly RD Rd = RS.GetRenderingDevice();
     private Rid FrameBufferTextureRid
@@ -298,6 +298,16 @@ public partial class MeshTextureRd : Texture2D
     public override int _GetHeight()
     {
         return Size.Y;
+    }
+
+    public void OnBeforeSerialize()
+    {
+    }
+
+    public void OnAfterDeserialize()
+    {
+        UniformBufferMatrixRid = new();
+        SamplerRid = Rd.SamplerCreate(new());
     }
 }
 
