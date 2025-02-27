@@ -10,7 +10,7 @@ using RS = Godot.RenderingServer;
 
 [GlobalClass]
 [Tool]
-public partial class MeshTextureRd : Texture2D, ISerializationListener
+public partial class MeshTextureRd : Texture2D
 {
     public static readonly RD Rd = RS.GetRenderingDevice();
     private Rid FrameBufferTextureRid
@@ -34,31 +34,46 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
     private Rid VertexBufferPosRid { get; set { if (field.IsValid) Rd.FreeRid(field); field = value; } }
     private Rid VertexBufferUvRid { get; set { if (field.IsValid) Rd.FreeRid(field); field = value; } }
     private readonly Rid TextureRd = RS.Texture2DPlaceholderCreate();
-    private RDUniform _uniformMatrix = new()
+    private readonly RDUniform _uniformMatrix = new()
     {
         UniformType = RD.UniformType.UniformBuffer,
         Binding = 0
     };
-    private RDUniform _uniformTex = new()
+    private readonly RDUniform _uniformTex = new()
     {
         UniformType = RD.UniformType.SamplerWithTexture,
         Binding = 1
     };
 
+    private readonly Godot.Collections.Array<RDVertexAttribute> _vertexAttrs = [
+            new() {
+                Format = RD.DataFormat.R32G32B32Sfloat,
+                Location = 0,
+                Stride = 4 * 3
+            },
+            new(){
+                Format = RD.DataFormat.R32G32Sfloat,
+                Location= 1,
+                Stride = 4 * 2
+        }];
+
+    private readonly long _vertexFormat;
+
     private bool _pipelineDirty = false;
+    private bool _meshDirty = false;
     private bool _uniformSetDirty = false;
     [Export] public Vector2I Size { get; set { field = value; QueueUpdatePipeline(); } } = new(256, 256);
     [Export]
-    public Color ClearColor { get; set { field = value; Update(); } } = Colors.Transparent;
+    public Color ClearColor { get; set { field = value; CallDeferred(nameof(Update)); } } = Colors.Transparent;
     [Export]
     public Mesh Mesh
     {
         get; set
         {
-            if (field != null) field.Changed -= QueueUpdatePipeline;
+            if (field != null) field.Changed -= QueueUpdateMesh;
             field = value;
-            QueueUpdatePipeline();
-            if (field != null) field.Changed += QueueUpdatePipeline;
+            QueueUpdateMesh();
+            if (field != null) field.Changed += QueueUpdateMesh;
         }
     }
     [Export]
@@ -73,7 +88,7 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         }
     }
     [Export]
-    public Projection Projection { get; set { field = value; _uniformSetDirty = true; CallDeferred(nameof(Update)); } } = Projection.Identity;
+    public Projection Projection { get; set { field = value; QueueUpdateUniformSet(); } } = Projection.Identity;
     [Export]
     public RDShaderFile Glsl
     {
@@ -90,25 +105,21 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
     {
         if (_pipelineDirty)
         {
-            InitPipeline();
-            ResetUniform();
-            Draw();
-            EmitChanged();
+            ResetPipeline();
             _pipelineDirty = false;
-            _uniformSetDirty = false;
         }
-        else if (_uniformSetDirty)
+        if (_uniformSetDirty)
         {
             ResetUniform();
-            Draw();
-            EmitChanged();
             _uniformSetDirty = false;
         }
-        else
+        if (_meshDirty)
         {
-            Draw();
-            EmitChanged();
+            ResetVertex();
+            _meshDirty = false;
         }
+        Draw();
+        EmitChanged();
     }
 
     private void QueueUpdatePipeline()
@@ -123,10 +134,17 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         CallDeferred(nameof(Update));
     }
 
+    private void QueueUpdateMesh()
+    {
+        _meshDirty = true;
+        CallDeferred(nameof(Update));
+    }
+
     public MeshTextureRd()
     {
         SamplerRid = Rd.SamplerCreate(new());
         Glsl.Changed += QueueUpdatePipeline;
+        _vertexFormat = Rd.VertexFormatCreate(_vertexAttrs);
     }
 
     public void Clean()
@@ -152,13 +170,42 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         base.Dispose(disposing);
     }
 
-    public void InitPipeline()
+    public void ResetVertex()
     {
         if (Mesh == null ||
-            Glsl == null ||
-            Mesh.GetSurfaceCount() == 0 ||
-            Texture == null ||
-            !Texture.GetRid().IsValid)
+            Mesh.GetSurfaceCount() == 0)
+        {
+            return;
+        }
+        var surfaceArray = Mesh.SurfaceGetArrays(0);
+        var vertexArray = surfaceArray[(int)Mesh.ArrayType.Vertex];
+        var indexArray = surfaceArray[(int)Mesh.ArrayType.Index];
+        var uvArray = surfaceArray[(int)Mesh.ArrayType.TexUV];
+        if (vertexArray.VariantType == Variant.Type.PackedVector2Array)
+        {
+            vertexArray = vertexArray.AsVector2Array().Select(v => new Vector3(v.X, v.Y, 0)).ToArray();
+        }
+        var points = vertexArray.AsVector3Array().SelectMany<Vector3, float>(v => { return [v.X, v.Y, v.Z]; }).ToArray();
+        var pointsBytes = points.CastSpan<float, byte>();
+        var indices = indexArray.AsInt32Array();
+        if (indices.Length > 0)
+        {
+            var indicesBytes = indices.CastSpan<int, byte>();
+            IndexBufferRid = Rd.IndexBufferCreate((uint)indices.Length, RD.IndexBufferFormat.Uint32, indicesBytes.ToArray());
+            IndexArrayRid = Rd.IndexArrayCreate(IndexBufferRid, 0, (uint)indices.Length);
+        }
+        var uvs = uvArray.AsVector2Array().SelectMany<Vector2, float>(v => [v.X, v.Y]).ToArray();
+        var uvBytes = uvs.CastSpan<float, byte>();
+
+        VertexBufferPosRid = Rd.VertexBufferCreate((uint)pointsBytes.Length, pointsBytes.ToArray());
+        VertexBufferUvRid = Rd.VertexBufferCreate((uint)uvBytes.Length, uvBytes.ToArray());
+        var vertexBuffers = new Godot.Collections.Array<Rid> { VertexBufferPosRid, VertexBufferUvRid };
+        VertexArrayRid = Rd.VertexArrayCreate((uint)(points.Length / 3), _vertexFormat, vertexBuffers);
+    }
+
+    public void ResetPipeline()
+    {
+        if (Glsl == null)
         {
             return;
         }
@@ -175,53 +222,6 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
 
         FrameBufferTextureRid = Rd.TextureCreate(texFormat, texView);
 
-        var surfaceArray = Mesh.SurfaceGetArrays(0);
-        var vertexArray = surfaceArray[(int)Mesh.ArrayType.Vertex];
-        var indexArray = surfaceArray[(int)Mesh.ArrayType.Index];
-        var uvArray = surfaceArray[(int)Mesh.ArrayType.TexUV];
-        if (vertexArray.VariantType == Variant.Type.PackedVector2Array)
-        {
-            vertexArray = vertexArray.AsVector2Array().Select(v => new Vector3(v.X, v.Y, 0)).ToArray();
-        }
-        var points = vertexArray.AsVector3Array().SelectMany<Vector3, float>(v => { return [v.X, v.Y, v.Z]; }).ToArray();
-        var pointsBytes = points.CastSpan<float, byte>();
-
-        var indices = indexArray.AsInt32Array();
-        if (indices.Length > 0)
-        {
-            var indices_byte = indices.CastSpan<int, byte>();
-
-            IndexBufferRid = Rd.IndexBufferCreate((uint)indices.Length, RD.IndexBufferFormat.Uint32, indices_byte.ToArray());
-
-            IndexArrayRid = Rd.IndexArrayCreate(IndexBufferRid, 0, (uint)indices.Length);
-        }
-
-        var uvs = uvArray.AsVector2Array().SelectMany<Vector2, float>(v => [v.X, v.Y]).ToArray();
-        var uvBytes = uvs.CastSpan<float, byte>();
-
-        VertexBufferPosRid = Rd.VertexBufferCreate((uint)pointsBytes.Length, pointsBytes.ToArray());
-
-        VertexBufferUvRid = Rd.VertexBufferCreate((uint)uvBytes.Length, uvBytes.ToArray());
-
-        var vertexBuffers = new Godot.Collections.Array<Rid> { VertexBufferPosRid, VertexBufferUvRid };
-
-        var vertexAttrs = new Godot.Collections.Array<RDVertexAttribute> {
-            new() {
-                Format = RD.DataFormat.R32G32B32Sfloat,
-                Location = 0,
-                Stride = 4 * 3
-            },
-            new(){
-                Format = RD.DataFormat.R32G32Sfloat,
-                Location= 1,
-                Stride = 4 * 2
-            }
-        };
-
-        var vertexFormat = Rd.VertexFormatCreate(vertexAttrs);
-
-        VertexArrayRid = Rd.VertexArrayCreate((uint)(points.Length / 3), vertexFormat, vertexBuffers);
-
         var blend = new RDPipelineColorBlendState();
         blend.Attachments.Add(new RDPipelineColorBlendStateAttachment());
 
@@ -230,7 +230,7 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         PipelineRid = Rd.RenderPipelineCreate(
                    ShaderRid,
                    Rd.FramebufferGetFormat(FrameBufferRid),
-                   vertexFormat,
+                   _vertexFormat,
                    RD.RenderPrimitive.Triangles,
                    new RDPipelineRasterizationState() { CullMode = RD.PolygonCullMode.Front },
                    new RDPipelineMultisampleState(),
@@ -298,16 +298,6 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
     public override int _GetHeight()
     {
         return Size.Y;
-    }
-
-    public void OnBeforeSerialize()
-    {
-        UniformBufferMatrixRid = new();
-    }
-
-    public void OnAfterDeserialize()
-    {
-        SamplerRid = Rd.SamplerCreate(new());
     }
 }
 
