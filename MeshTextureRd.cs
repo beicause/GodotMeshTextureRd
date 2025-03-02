@@ -28,13 +28,13 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
     private Rid ShaderRid { get; set { if (field.IsValid) Rd.FreeRid(field); field = value; } }
     private Rid PipelineRid;
     private Rid SamplerRid { get; set { if (field.IsValid) Rd.FreeRid(field); field = value; } }
-    private Rid UniformBufferMatrixRid { get; set { if (field.IsValid) Rd.FreeRid(field); field = value; } }
+    private Rid UniformDataBufferRid { get; set { if (field.IsValid) Rd.FreeRid(field); field = value; } }
     private Rid UniformSetRid;
     private Rid IndexBufferRid { get; set { if (field.IsValid) Rd.FreeRid(field); field = value; } }
     private Rid VertexBufferPosRid { get; set { if (field.IsValid) Rd.FreeRid(field); field = value; } }
     private Rid VertexBufferUvRid { get; set { if (field.IsValid) Rd.FreeRid(field); field = value; } }
     private readonly Rid TextureRd = RS.Texture2DPlaceholderCreate();
-    private readonly RDUniform _uniformMatrix = new()
+    private readonly RDUniform _uniformData = new()
     {
         UniformType = RD.UniformType.UniformBuffer,
         Binding = 0
@@ -156,7 +156,7 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         ShaderRid = new();
         PipelineRid = new();
         SamplerRid = new();
-        UniformBufferMatrixRid = new();
+        UniformDataBufferRid = new();
         UniformSetRid = new();
         IndexBufferRid = new();
         VertexBufferPosRid = new();
@@ -245,26 +245,26 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         {
             return;
         }
-        var matrixArray = new float[] {
+        var dataArray = new float[] {
             Projection[0][0], Projection[0][1], Projection[0][2], Projection[0][3],
             Projection[1][0], Projection[1][1], Projection[1][2], Projection[1][3],
             Projection[2][0], Projection[2][1], Projection[2][2], Projection[2][3],
             Projection[3][0], Projection[3][1], Projection[3][2], Projection[3][3]
         };
-        var bytes = matrixArray.CastSpan<float, byte>().ToArray();
-        if (!UniformBufferMatrixRid.IsValid)
+        var bytes = dataArray.CastSpan<float, byte>().ToArray();
+        if (!UniformDataBufferRid.IsValid)
         {
-            UniformBufferMatrixRid = Rd.UniformBufferCreate((uint)bytes.Length, bytes);
-            _uniformMatrix.ClearIds();
-            _uniformMatrix.AddId(UniformBufferMatrixRid);
+            UniformDataBufferRid = Rd.UniformBufferCreate((uint)bytes.Length, bytes);
+            _uniformData.ClearIds();
+            _uniformData.AddId(UniformDataBufferRid);
         }
-        else Rd.BufferUpdate(UniformBufferMatrixRid, 0, (uint)bytes.Length, bytes);
+        else Rd.BufferUpdate(UniformDataBufferRid, 0, (uint)bytes.Length, bytes);
 
         _uniformTex.ClearIds();
         _uniformTex.AddId(SamplerRid);
         _uniformTex.AddId(RS.TextureGetRdTexture(Texture.GetRid()));
 
-        UniformSetRid = UniformSetCacheRD.GetCache(ShaderRid, 0, [_uniformMatrix, _uniformTex]);
+        UniformSetRid = UniformSetCacheRD.GetCache(ShaderRid, 0, [_uniformData, _uniformTex]);
     }
 
     public void Draw()
@@ -306,7 +306,7 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
 
     public void OnAfterDeserialize()
     {
-        UniformBufferMatrixRid = new();
+        UniformDataBufferRid = new();
         SamplerRid = Rd.SamplerCreate(new());
     }
 }
