@@ -1,7 +1,15 @@
 <Project Sdk="Godot.NET.Sdk/4.4.0-rc">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <LangVersion>preview</LangVersion>
- </PropertyGroup>
+    <PublishAOT>true</PublishAOT>
+    <PublishAotUsingRuntimePack Condition="'$(GodotTargetPlatform)' == 'android'">true</PublishAotUsingRuntimePack>
+    <CppCompilerAndLinker Condition="'$(GodotTargetPlatform)' == 'android'">$(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/linux-x86_64/bin/clang</CppCompilerAndLinker>
+  </PropertyGroup>
+  <!-- Root the assemblies to avoid trimming. -->
+  <ItemGroup>
+    <TrimmerRootAssembly Include="GodotSharp" />
+    <TrimmerRootAssembly Include="$(TargetName)" />
+  </ItemGroup>
 </Project>
