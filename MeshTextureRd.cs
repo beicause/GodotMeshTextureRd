@@ -77,7 +77,7 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         }
     }
     [Export]
-    public Texture2D Texture
+    public Texture2D BaseTexture
     {
         get; set
         {
@@ -90,7 +90,7 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
     [Export]
     public Projection Projection { get; set { field = value; QueueUpdateUniformSet(); } } = Projection.Identity;
     [Export]
-    public RDShaderFile Glsl
+    public RDShaderFile GlslFile
     {
         get; set
         {
@@ -143,7 +143,7 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
     public MeshTextureRd()
     {
         SamplerRid = Rd.SamplerCreate(new());
-        Glsl.Changed += QueueUpdatePipeline;
+        GlslFile.Changed += QueueUpdatePipeline;
         _vertexFormat = Rd.VertexFormatCreate(_vertexAttrs);
     }
 
@@ -205,18 +205,18 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
 
     public void ResetPipeline()
     {
-        if (Glsl == null)
+        if (GlslFile == null)
         {
             return;
         }
-        var shaderSpirv = Glsl.GetSpirV();
+        var shaderSpirv = GlslFile.GetSpirV();
         ShaderRid = Rd.ShaderCreateFromSpirV(shaderSpirv);
 
         var texFormat = new RDTextureFormat();
         var texView = new RDTextureView();
         texFormat.TextureType = RD.TextureType.Type2D;
-        texFormat.Height = (uint)Size.Y;
         texFormat.Width = (uint)Size.X;
+        texFormat.Height = (uint)Size.Y;
         texFormat.Format = RD.DataFormat.R8G8B8A8Unorm;
         texFormat.UsageBits = RD.TextureUsageBits.SamplingBit | RD.TextureUsageBits.ColorAttachmentBit;
 
@@ -241,7 +241,7 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
 
     private void ResetUniform()
     {
-        if (!SamplerRid.IsValid || Texture == null || !Texture.GetRid().IsValid || !ShaderRid.IsValid)
+        if (!SamplerRid.IsValid || BaseTexture == null || !BaseTexture.GetRid().IsValid || !ShaderRid.IsValid)
         {
             return;
         }
@@ -262,7 +262,7 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
 
         _uniformTex.ClearIds();
         _uniformTex.AddId(SamplerRid);
-        _uniformTex.AddId(RS.TextureGetRdTexture(Texture.GetRid()));
+        _uniformTex.AddId(RS.TextureGetRdTexture(BaseTexture.GetRid()));
 
         UniformSetRid = UniformSetCacheRD.GetCache(ShaderRid, 0, [_uniformData, _uniformTex]);
     }

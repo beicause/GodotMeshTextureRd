@@ -12,8 +12,13 @@ config_version=5
 
 config/name="GodotMeshTextureRd"
 run/main_scene="uid://cnk1inmvelj4x"
-config/features=PackedStringArray("4.4", "C#", "Mobile")
+config/features=PackedStringArray("4.5", "C#", "Mobile")
 config/icon="uid://c3ioihjwj1mqy"
+
+[debug]
+
+gdscript/warnings/untyped_declaration=1
+gdscript/warnings/integer_division=0
 
 [dotnet]
 
