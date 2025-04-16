@@ -1,4 +1,4 @@
-@tool
+# @tool
 extends Texture2D
 class_name MeshTextureRD
 
@@ -166,7 +166,7 @@ func _queue_update_mesh() -> void:
     _update.call_deferred()
 
 
-func clean() -> void:
+func destroy() -> void:
     framebuffer_texture_rid = RID()
     framebuffer_rid = RID()
     vertex_array_rid = RID()
@@ -179,6 +179,7 @@ func clean() -> void:
     index_buffer_rid = RID()
     vertex_buffer_pos_rid = RID()
     vertex_buffer_uv_rid = RID()
+    RenderingServer.free_rid(texture_rd)
 
 func _reset_vertex() -> void:
     if mesh == null or mesh.get_surface_count() == 0:

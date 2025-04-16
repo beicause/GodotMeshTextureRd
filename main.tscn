@@ -1,9 +1,21 @@
-[gd_scene load_steps=13 format=3 uid="uid://cnk1inmvelj4x"]
+[gd_scene load_steps=15 format=3 uid="uid://cnk1inmvelj4x"]
 
 [ext_resource type="Texture2D" uid="uid://b5kekxgl0iip5" path="res://icon.svg" id="1_1bvp3"]
 [ext_resource type="RDShaderFile" uid="uid://clls6xc0k2y1f" path="res://glsl/base_texture.glsl" id="1_h2yge"]
+[ext_resource type="Script" uid="uid://dplv73lg8bbjf" path="res://ButtonCs.cs" id="1_lquwl"]
 [ext_resource type="Script" uid="uid://df8wsrhnsmsm3" path="res://MeshTextureRd.cs" id="3_lquwl"]
 [ext_resource type="Script" uid="uid://ieb8rdw8x2f8" path="res://mesh_texture_rd.gd" id="4_1bvp3"]
+
+[sub_resource type="GDScript" id="GDScript_1bvp3"]
+script/source = "extends Button
+
+func _pressed() -> void:
+	var sp:Sprite2D=$\"../GDS/Sprite2D\"
+	$\"../GDS\".remove_child(sp)
+	sp.texture.destroy()
+	RenderingServer.free_rid(sp.texture.get_rid())
+	sp.free()
+"
 
 [sub_resource type="PrismMesh" id="PrismMesh_h2yge"]
 
@@ -63,6 +75,22 @@ metadata/_custom_type_script = "uid://ieb8rdw8x2f8"
 
 [node name="Node2D" type="Node2D"]
 
+[node name="ButtonCS" type="Button" parent="."]
+offset_left = 178.0
+offset_top = 71.0
+offset_right = 289.0
+offset_bottom = 120.0
+text = "Free CS "
+script = ExtResource("1_lquwl")
+
+[node name="ButtonGDS" type="Button" parent="."]
+offset_left = 425.0
+offset_top = 74.0
+offset_right = 539.0
+offset_bottom = 120.0
+text = "Free GDScript"
+script = SubResource("GDScript_1bvp3")
+
 [node name="CS" type="Node2D" parent="."]
 
 [node name="Sprite2D" type="Sprite2D" parent="CS"]
@@ -77,8 +105,8 @@ texture = SubResource("Texture2D_272bh")
 position = Vector2(653, 238)
 texture = SubResource("Texture2D_5vw27")
 
-[node name="GDScript" type="Node2D" parent="."]
+[node name="GDS" type="Node2D" parent="."]
 
-[node name="Sprite2D" type="Sprite2D" parent="GDScript"]
-position = Vector2(156, 152)
+[node name="Sprite2D" type="Sprite2D" parent="GDS"]
+position = Vector2(156, 234)
 texture = SubResource("Texture2D_1bvp3")

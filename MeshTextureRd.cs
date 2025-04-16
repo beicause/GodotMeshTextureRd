@@ -9,7 +9,7 @@ using RS = Godot.RenderingServer;
 
 
 [GlobalClass]
-[Tool]
+// [Tool]
 public partial class MeshTextureRd : Texture2D, ISerializationListener
 {
     public static readonly RD Rd = RS.GetRenderingDevice();
@@ -147,7 +147,7 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         _vertexFormat = Rd.VertexFormatCreate(_vertexAttrs);
     }
 
-    public void Clean()
+    public void Destroy()
     {
         FrameBufferTextureRid = new();
         FrameBufferRid = new();
@@ -161,14 +161,15 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         IndexBufferRid = new();
         VertexBufferPosRid = new();
         VertexBufferUvRid = new();
+        RS.FreeRid(TextureRd);
     }
 
-    protected override void Dispose(bool disposing)
-    {
-        Clean();
-        RS.FreeRid(TextureRd);
-        base.Dispose(disposing);
-    }
+    // protected override void Dispose(bool disposing)
+    // {
+    //     Clean();
+    //     RS.FreeRid(TextureRd);
+    //     base.Dispose(disposing);
+    // }
 
     public void ResetVertex()
     {
