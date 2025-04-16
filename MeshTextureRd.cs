@@ -9,7 +9,7 @@ using RS = Godot.RenderingServer;
 
 
 [GlobalClass]
-// [Tool]
+[Tool]
 public partial class MeshTextureRd : Texture2D, ISerializationListener
 {
     public static readonly RD Rd = RS.GetRenderingDevice();
@@ -94,14 +94,14 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
     {
         get; set
         {
-            if (field != null) field.Changed -= QueueUpdatePipeline;
+            if (field != null) field.Changed -= QueueUpdateShader;
             field = value;
-            QueueUpdatePipeline();
-            if (field != null) field.Changed += QueueUpdatePipeline;
+            QueueUpdateShader();
+            if (field != null) field.Changed += QueueUpdateShader;
         }
     } = GD.Load<RDShaderFile>("res://glsl/base_texture.glsl");
 
-    private void Update()
+    public void Update()
     {
         if (_pipelineDirty)
         {
@@ -118,8 +118,16 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
             ResetVertex();
             _meshDirty = false;
         }
-        Draw();
+        DrawList();
         EmitChanged();
+    }
+
+    private void QueueUpdateShader()
+    {
+        ResetShader();
+        _pipelineDirty = true;
+        _uniformSetDirty = true;
+        CallDeferred(nameof(Update));
     }
 
     private void QueueUpdatePipeline()
@@ -143,8 +151,11 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
     public MeshTextureRd()
     {
         SamplerRid = Rd.SamplerCreate(new());
-        GlslFile.Changed += QueueUpdatePipeline;
         _vertexFormat = Rd.VertexFormatCreate(_vertexAttrs);
+        if (GlslFile != null)
+        {
+            GlslFile.Changed += QueueUpdateShader;
+        }
     }
 
     public void Destroy()
@@ -161,17 +172,16 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         IndexBufferRid = new();
         VertexBufferPosRid = new();
         VertexBufferUvRid = new();
-        RS.FreeRid(TextureRd);
     }
 
-    // protected override void Dispose(bool disposing)
-    // {
-    //     Clean();
-    //     RS.FreeRid(TextureRd);
-    //     base.Dispose(disposing);
-    // }
+    protected override void Dispose(bool disposing)
+    {
+        Destroy();
+        RS.FreeRid(TextureRd);
+        base.Dispose(disposing);
+    }
 
-    public void ResetVertex()
+    private void ResetVertex()
     {
         if (Mesh == null ||
             Mesh.GetSurfaceCount() == 0)
@@ -204,7 +214,13 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         VertexArrayRid = Rd.VertexArrayCreate((uint)(points.Length / 3), _vertexFormat, vertexBuffers);
     }
 
-    public void ResetPipeline()
+    private void ResetShader()
+    {
+        var shaderSpirv = GlslFile.GetSpirV();
+        ShaderRid = Rd.ShaderCreateFromSpirV(shaderSpirv);
+    }
+
+    private void ResetPipeline()
     {
         if (GlslFile == null)
         {
@@ -268,7 +284,7 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         UniformSetRid = UniformSetCacheRD.GetCache(ShaderRid, 0, [_uniformData, _uniformTex]);
     }
 
-    public void Draw()
+    private void DrawList()
     {
         if (!(PipelineRid.IsValid &&
         FrameBufferRid.IsValid &&
