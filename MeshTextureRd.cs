@@ -176,8 +176,11 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
 
     protected override void Dispose(bool disposing)
     {
-        Destroy();
-        RS.FreeRid(TextureRd);
+        if (IsInstanceValid(Rd))
+        {
+            Destroy();
+            RS.FreeRid(TextureRd);
+        }
         base.Dispose(disposing);
     }
 

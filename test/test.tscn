@@ -1,0 +1,34 @@
+[gd_scene load_steps=7 format=3 uid="uid://dnmikr3gawstd"]
+
+[ext_resource type="Texture2D" uid="uid://b5kekxgl0iip5" path="res://icon.svg" id="1_65205"]
+[ext_resource type="Script" uid="uid://dubxcdbe0yq2l" path="res://test/Test.cs" id="1_hrq6i"]
+[ext_resource type="RDShaderFile" uid="uid://clls6xc0k2y1f" path="res://glsl/base_texture.glsl" id="2_hrq6i"]
+[ext_resource type="Script" uid="uid://df8wsrhnsmsm3" path="res://MeshTextureRd.cs" id="3_tbfq4"]
+
+[sub_resource type="TorusMesh" id="TorusMesh_1bvp3"]
+
+[sub_resource type="Texture2D" id="Texture2D_s3n3v"]
+resource_local_to_scene = false
+resource_name = ""
+script = ExtResource("3_tbfq4")
+Size = Vector2i(256, 256)
+ClearColor = Color(0.597297, 0.534462, 0.906645, 1)
+Mesh = SubResource("TorusMesh_1bvp3")
+BaseTexture = ExtResource("1_65205")
+Projection = Projection(-0.71, -0.91, 0.5, 0.01, 0.25, 1.53, 0.315, 0, 1.43, -0.135, 0.48, 0.14, 0.085, 0.02, 0.75, 1.845)
+GlslFile = ExtResource("2_hrq6i")
+metadata/_custom_type_script = "uid://delyovxoqvijt"
+
+[node name="Test" type="Node2D"]
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+position = Vector2(518, 368.5)
+texture = SubResource("Texture2D_s3n3v")
+
+[node name="Button" type="Button" parent="."]
+offset_left = 238.0
+offset_top = 93.0
+offset_right = 362.0
+offset_bottom = 158.0
+text = "Free"
+script = ExtResource("1_hrq6i")
