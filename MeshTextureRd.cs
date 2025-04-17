@@ -12,7 +12,7 @@ using RS = Godot.RenderingServer;
 [Tool]
 public partial class MeshTextureRd : Texture2D, ISerializationListener
 {
-    public static readonly RD Rd = RS.GetRenderingDevice();
+    private readonly RD Rd = RS.GetRenderingDevice();
     private Rid FrameBufferTextureRid
     {
         get; set
@@ -176,6 +176,7 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
 
     protected override void Dispose(bool disposing)
     {
+        // Console.WriteLine("disposing, rd is " + (IsInstanceValid(Rd) ? "valid" : "null"));
         if (IsInstanceValid(Rd))
         {
             Destroy();
