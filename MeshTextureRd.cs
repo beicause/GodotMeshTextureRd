@@ -230,9 +230,6 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         {
             return;
         }
-        var shaderSpirv = GlslFile.GetSpirV();
-        ShaderRid = Rd.ShaderCreateFromSpirV(shaderSpirv);
-
         var texFormat = new RDTextureFormat();
         var texView = new RDTextureView();
         texFormat.TextureType = RD.TextureType.Type2D;

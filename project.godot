@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="GodotMeshTextureRd"
-run/main_scene="uid://cnk1inmvelj4x"
+run/main_scene="uid://d17qqp0bhpswc"
 config/features=PackedStringArray("4.5", "C#", "Mobile")
 config/icon="uid://c3ioihjwj1mqy"
 

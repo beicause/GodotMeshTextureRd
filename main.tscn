@@ -1,61 +1,87 @@
-[gd_scene load_steps=10 format=3 uid="uid://cnk1inmvelj4x"]
+[gd_scene load_steps=14 format=3 uid="uid://d17qqp0bhpswc"]
 
-[ext_resource type="Texture2D" uid="uid://b5kekxgl0iip5" path="res://icon.svg" id="1_1bvp3"]
-[ext_resource type="RDShaderFile" uid="uid://clls6xc0k2y1f" path="res://glsl/base_texture.glsl" id="1_h2yge"]
-[ext_resource type="Script" uid="uid://df8wsrhnsmsm3" path="res://MeshTextureRd.cs" id="3_lquwl"]
+[ext_resource type="Texture2D" uid="uid://b5kekxgl0iip5" path="res://icon.svg" id="1_7mycd"]
+[ext_resource type="RDShaderFile" uid="uid://clls6xc0k2y1f" path="res://glsl/base_texture.glsl" id="2_272bh"]
+[ext_resource type="Script" uid="uid://df8wsrhnsmsm3" path="res://MeshTextureRd.cs" id="3_5vw27"]
 
-[sub_resource type="PrismMesh" id="PrismMesh_h2yge"]
+[sub_resource type="PrismMesh" id="PrismMesh_kek77"]
+
+[sub_resource type="Texture2D" id="Texture2D_4c57u"]
+resource_local_to_scene = false
+resource_name = ""
+script = ExtResource("3_5vw27")
+Size = Vector2i(256, 256)
+ClearColor = Color(0.412266, 0.447241, 0.735728, 1)
+Mesh = SubResource("PrismMesh_kek77")
+BaseTexture = ExtResource("1_7mycd")
+Projection = Projection(-0.605, -1.285, 0, 0, 1.09, -1.67, 0.11, 0, 0.755, 0.035, 1.2, 0, 0.025, -0.26, 0, 1.355)
+GlslFile = ExtResource("2_272bh")
+metadata/_custom_type_script = "uid://delyovxoqvijt"
+
+[sub_resource type="TorusMesh" id="TorusMesh_lquwl"]
 
 [sub_resource type="Texture2D" id="Texture2D_7mycd"]
 resource_local_to_scene = false
 resource_name = ""
-script = ExtResource("3_lquwl")
+script = ExtResource("3_5vw27")
 Size = Vector2i(256, 256)
-ClearColor = Color(0.360549, 0.582093, 0.477992, 1)
-Mesh = SubResource("PrismMesh_h2yge")
-BaseTexture = ExtResource("1_1bvp3")
-Projection = Projection(-0.605, -1.285, 0, 0, 1.09, -1.67, 0.11, 0, 0.755, 0.035, 1.2, 0, 0.025, -0.26, 0, 1.355)
-GlslFile = ExtResource("1_h2yge")
+ClearColor = Color(0.271125, 0.510188, 0.620698, 1)
+Mesh = SubResource("TorusMesh_lquwl")
+BaseTexture = ExtResource("1_7mycd")
+Projection = Projection(-0.71, -0.91, 0.5, 0.01, 0.25, 1.53, 0.315, 0, 1.43, -0.135, 0.48, 0.14, 0.085, 0.02, 0.75, 1.845)
+GlslFile = ExtResource("2_272bh")
 metadata/_custom_type_script = "uid://delyovxoqvijt"
 
-[sub_resource type="TorusMesh" id="TorusMesh_1bvp3"]
+[sub_resource type="QuadMesh" id="QuadMesh_1bvp3"]
+
+[sub_resource type="Texture2D" id="Texture2D_lquwl"]
+resource_local_to_scene = false
+resource_name = ""
+script = ExtResource("3_5vw27")
+Size = Vector2i(256, 256)
+ClearColor = Color(0.572798, 0.384286, 0.683792, 0.337255)
+Mesh = SubResource("QuadMesh_1bvp3")
+BaseTexture = ExtResource("1_7mycd")
+Projection = Projection(-1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
+GlslFile = ExtResource("2_272bh")
+metadata/_custom_type_script = "uid://delyovxoqvijt"
+
+[sub_resource type="Gradient" id="Gradient_1bvp3"]
+interpolation_color_space = 2
+colors = PackedColorArray(0.692862, 0.522376, 0.466238, 1, 0.634748, 0.521037, 0.665456, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_lquwl"]
+gradient = SubResource("Gradient_1bvp3")
+
+[sub_resource type="TextMesh" id="TextMesh_7mycd"]
+text = "Rasterize Mesh Texture"
 
 [sub_resource type="Texture2D" id="Texture2D_272bh"]
 resource_local_to_scene = false
 resource_name = ""
-script = ExtResource("3_lquwl")
-Size = Vector2i(256, 256)
-ClearColor = Color(0.597297, 0.534462, 0.906645, 1)
-Mesh = SubResource("TorusMesh_1bvp3")
-BaseTexture = ExtResource("1_1bvp3")
-Projection = Projection(-0.71, -0.91, 0.5, 0.01, 0.25, 1.53, 0.315, 0, 1.43, -0.135, 0.48, 0.14, 0.085, 0.02, 0.75, 1.845)
-GlslFile = ExtResource("1_h2yge")
-metadata/_custom_type_script = "uid://delyovxoqvijt"
-
-[sub_resource type="QuadMesh" id="QuadMesh_lquwl"]
-
-[sub_resource type="Texture2D" id="Texture2D_5vw27"]
-resource_local_to_scene = false
-resource_name = ""
-script = ExtResource("3_lquwl")
-Size = Vector2i(256, 256)
+script = ExtResource("3_5vw27")
+Size = Vector2i(552, 131)
 ClearColor = Color(1, 1, 1, 0)
-Mesh = SubResource("QuadMesh_lquwl")
-BaseTexture = ExtResource("1_1bvp3")
-Projection = Projection(-1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
-GlslFile = ExtResource("1_h2yge")
-metadata/_custom_type_script = "uid://delyovxoqvijt"
+Mesh = SubResource("TextMesh_7mycd")
+BaseTexture = SubResource("GradientTexture2D_lquwl")
+Projection = Projection(1.095, 0, 0, 0, 0, -5.53, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1)
+GlslFile = ExtResource("2_272bh")
+metadata/_custom_type_script = "uid://cdfq6x7v36k1e"
 
 [node name="Node2D" type="Node2D"]
 
-[node name="Sprite2D" type="Sprite2D" parent="."]
-position = Vector2(770, 369)
+[node name="Prism" type="Sprite2D" parent="."]
+position = Vector2(573, 321)
+texture = SubResource("Texture2D_4c57u")
+
+[node name="Torus" type="Sprite2D" parent="."]
+position = Vector2(898, 319)
 texture = SubResource("Texture2D_7mycd")
 
-[node name="Sprite2D2" type="Sprite2D" parent="."]
-position = Vector2(518, 368.5)
-texture = SubResource("Texture2D_272bh")
+[node name="Quad" type="Sprite2D" parent="."]
+position = Vector2(252, 321)
+texture = SubResource("Texture2D_lquwl")
 
-[node name="Sprite2D3" type="Sprite2D" parent="."]
-position = Vector2(653, 238)
-texture = SubResource("Texture2D_5vw27")
+[node name="Text" type="Sprite2D" parent="."]
+position = Vector2(293, 89)
+texture = SubResource("Texture2D_272bh")
