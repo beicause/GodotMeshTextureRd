@@ -59,12 +59,13 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
 
     private readonly long _vertexFormat;
 
+    private bool _shaderDirty = false;
     private bool _pipelineDirty = false;
     private bool _meshDirty = false;
     private bool _uniformSetDirty = false;
     [Export] public Vector2I Size { get; set { field = value; QueueUpdatePipeline(); } } = new(256, 256);
     [Export]
-    public Color ClearColor { get; set { field = value; CallDeferred(nameof(Update)); } } = Colors.Transparent;
+    public Color ClearColor { get; set { field = value; QueueUpdate(); } } = Colors.Transparent;
     [Export]
     public Mesh Mesh
     {
@@ -101,8 +102,17 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         }
     } = GD.Load<RDShaderFile>("res://glsl/base_texture.glsl");
 
+    private bool updateQueued = false;
+
     public void Update()
     {
+        if (_shaderDirty)
+        {
+            ResetShader();
+            ResetPipeline();
+            ResetUniform();
+            _shaderDirty = false;
+        }
         if (_pipelineDirty)
         {
             ResetPipeline();
@@ -120,32 +130,35 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         }
         DrawList();
         EmitChanged();
+        updateQueued = false;
     }
-
+    private void QueueUpdate()
+    {
+        if (updateQueued)
+        {
+            return;
+        }
+        updateQueued = true;
+        CallDeferred(nameof(Update));
+    }
     private void QueueUpdateShader()
     {
-        ResetShader();
-        _pipelineDirty = true;
-        _uniformSetDirty = true;
-        CallDeferred(nameof(Update));
+        _shaderDirty = true; QueueUpdate();
     }
 
     private void QueueUpdatePipeline()
     {
-        _pipelineDirty = true;
-        CallDeferred(nameof(Update));
+        _pipelineDirty = true; QueueUpdate();
     }
 
     private void QueueUpdateUniformSet()
     {
-        _uniformSetDirty = true;
-        CallDeferred(nameof(Update));
+        _uniformSetDirty = true; QueueUpdate();
     }
 
     private void QueueUpdateMesh()
     {
-        _meshDirty = true;
-        CallDeferred(nameof(Update));
+        _meshDirty = true; QueueUpdate();
     }
 
     public MeshTextureRd()
