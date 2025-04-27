@@ -1,5 +1,6 @@
 # Godot MeshTextureRd
-<img src="./icon.webp" width=200/>
+
+<img src="./screenshots/rasterize_mesh_texture.webp"/>
 
 This implements a Mesh-based Texture using the `RenderingDevice` rasterization pipeline (C#). For details, please refer to the [MeshTextureRd.cs](./MeshTextureRd.cs).
 
