@@ -32,23 +32,6 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
     private Rid VertexBufferPosRid { get; set { if (field.IsValid) Rd.FreeRid(field); field = value; } }
     private Rid VertexBufferUvRid { get; set { if (field.IsValid) Rd.FreeRid(field); field = value; } }
     private readonly Rid TextureRd = RS.Texture2DPlaceholderCreate();
-    private readonly RDUniform _uniformTex = new()
-    {
-        UniformType = RD.UniformType.SamplerWithTexture,
-        Binding = 0
-    };
-
-    private readonly Godot.Collections.Array<RDVertexAttribute> _vertexAttrs = [
-            new() {
-                Format = RD.DataFormat.R32G32B32Sfloat,
-                Location = 0,
-                Stride = 4 * 3
-            },
-            new(){
-                Format = RD.DataFormat.R32G32Sfloat,
-                Location= 1,
-                Stride = 4 * 2
-        }];
 
     private readonly long _vertexFormat;
     private bool _is2DMesh = false;
@@ -106,8 +89,33 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
     } = false;
 
     private bool updateQueued = false;
+
+    private RDPipelineRasterizationState pipelineRasterizationState = new() { FrontFace = RD.PolygonFrontFace.CounterClockwise, CullMode = RD.PolygonCullMode.Back };
     private RDTextureFormat texFormat = new();
-    private RDTextureView texView = new();
+
+    private readonly static RDUniform _uniformTex = new()
+    {
+        UniformType = RD.UniformType.SamplerWithTexture,
+        Binding = 0
+    };
+
+    private static readonly Godot.Collections.Array<RDVertexAttribute> _vertexAttrs = [
+        new() {
+            Format = RD.DataFormat.R32G32B32Sfloat,
+            Location = 0,
+            Stride = 4 * 3
+        },
+        new(){
+            Format = RD.DataFormat.R32G32Sfloat,
+            Location= 1,
+            Stride = 4 * 2
+    }];
+    private static readonly RDTextureView texView = new();
+    private static readonly RDPipelineMultisampleState pipelineMultisampleState = new();
+    private static readonly RDPipelineDepthStencilState pipelineDepthStencilState = new();
+    private static readonly RDPipelineColorBlendState pipelineColorBlendState = new();
+    private static readonly RDPipelineColorBlendStateAttachment pipelineColorBlendStateAttachment = new();
+    private static readonly RDSamplerState samplerState = new();
 
     public void Update()
     {
@@ -166,9 +174,14 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         _meshDirty = true; QueueUpdate();
     }
 
+    static MeshTextureRd()
+    {
+        pipelineColorBlendState.Attachments.Add(pipelineColorBlendStateAttachment);
+    }
+
     public MeshTextureRd()
     {
-        SamplerRid = Rd.SamplerCreate(new());
+        SamplerRid = Rd.SamplerCreate(samplerState);
         _vertexFormat = Rd.VertexFormatCreate(_vertexAttrs);
         if (GlslFile != null)
         {
@@ -214,17 +227,23 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         var vertexArray = surfaceArray[(int)Mesh.ArrayType.Vertex];
         var indexArray = surfaceArray[(int)Mesh.ArrayType.Index];
         var uvArray = surfaceArray[(int)Mesh.ArrayType.TexUV];
+
         _is2DMesh = false;
+        Vector3[] vertexArray3;
+
         if (vertexArray.VariantType == Variant.Type.PackedVector2Array)
         {
             _is2DMesh = true;
             // 2D Mesh needs to be downscaled to be visible in normal projection.
-            vertexArray = vertexArray.AsVector2Array().Select(v => new Vector3(v.X, v.Y, 0) / 100).ToArray();
+            vertexArray3 = [.. vertexArray.AsVector2Array().Select(v => new Vector3(v.X, v.Y, 0) / 100)];
         }
-        var vertexArray3 = vertexArray.AsVector3Array();
+        else
+        {
+            vertexArray3 = vertexArray.AsVector3Array();
+        }
+
         var vertexCount = (uint)vertexArray3.Length;
-        var vertexArrayBuffer = vertexArray3.SelectMany<Vector3, float>(v => { return [v.X, v.Y, v.Z]; }).ToArray();
-        var vertexBytes = MemoryMarshal.Cast<float, byte>(vertexArrayBuffer);
+        var vertexBytes = MemoryMarshal.Cast<Vector3, byte>(vertexArray3);
         var isIndex16 = vertexCount <= 0xffff;
         var indices = indexArray.AsInt32Array();
         var indices16 = isIndex16 ? indices.Select(i => (short)i).ToArray() : [];
@@ -234,8 +253,8 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
             IndexBufferRid = Rd.IndexBufferCreate((uint)indices.Length, isIndex16 ? RD.IndexBufferFormat.Uint16 : RD.IndexBufferFormat.Uint32, indicesBytes.ToArray());
             IndexArrayRid = Rd.IndexArrayCreate(IndexBufferRid, 0, (uint)indices.Length);
         }
-        var uvs = uvArray.AsVector2Array().SelectMany<Vector2, float>(v => [v.X, v.Y]).ToArray();
-        var uvBytes = MemoryMarshal.Cast<float, byte>(uvs);
+        var uvs = uvArray.AsVector2Array();
+        var uvBytes = MemoryMarshal.Cast<Vector2, byte>(uvs);
 
         VertexBufferPosRid = Rd.VertexBufferCreate((uint)vertexBytes.Length, vertexBytes.ToArray());
         VertexBufferUvRid = Rd.VertexBufferCreate((uint)uvBytes.Length, uvBytes.ToArray());
@@ -249,10 +268,6 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         ShaderRid = Rd.ShaderCreateFromSpirV(shaderSpirv);
     }
 
-    private RDPipelineRasterizationState pipelineRasterizationState = new() { FrontFace = RD.PolygonFrontFace.CounterClockwise, CullMode = RD.PolygonCullMode.Back };
-    private RDPipelineMultisampleState pipelineMultisampleState = new();
-    private RDPipelineDepthStencilState pipelineDepthStencilState = new();
-
     private void ResetPipeline()
     {
         if (GlslFile == null)
@@ -263,13 +278,10 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         texFormat.Width = (uint)Size.X;
         texFormat.Height = (uint)Size.Y;
         texFormat.Format = RD.DataFormat.R8G8B8A8Unorm;
-        texFormat.Mipmaps = GenerateMipmaps ? GetImageRequiredMipmaps(texFormat.Width, texFormat.Height, 0) : 1; ;
+        texFormat.Mipmaps = GenerateMipmaps ? GetImageRequiredMipmaps(texFormat.Width, texFormat.Height) : 1; ;
         texFormat.UsageBits = RD.TextureUsageBits.SamplingBit | RD.TextureUsageBits.ColorAttachmentBit | RD.TextureUsageBits.CanCopyToBit | RD.TextureUsageBits.CanCopyFromBit;
 
         FrameBufferTextureRid = Rd.TextureCreate(texFormat, texView);
-
-        var blend = new RDPipelineColorBlendState();
-        blend.Attachments.Add(new RDPipelineColorBlendStateAttachment());
 
         FrameBufferRid = Rd.FramebufferCreate([FrameBufferTextureRid]);
 
@@ -283,7 +295,7 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
                     pipelineRasterizationState,
                     pipelineMultisampleState,
                     pipelineDepthStencilState,
-                    blend
+                    pipelineColorBlendState
                );
     }
 
@@ -335,18 +347,18 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         if (GenerateMipmaps) CreateMipmaps();
     }
 
-    private static uint GetImageRequiredMipmaps(uint p_width, uint p_height, uint p_depth)
+    private static uint GetImageRequiredMipmaps(uint p_width, uint p_height/*, uint p_depth*/)
     {
         uint w = p_width;
         uint h = p_height;
-        uint d = p_depth;
+        // uint d = p_depth;
         uint mipmaps = 1;
         while (true)
         {
-            if (w == 1 && h == 1 && d == 1) break;
+            if (w == 1 && h == 1 /*&& d == 1*/) break;
             w = Math.Max(1u, w >> 1);
             h = Math.Max(1u, h >> 1);
-            d = Math.Max(1u, d >> 1);
+            // d = Math.Max(1u, d >> 1);
             mipmaps++;
         }
         return mipmaps;
