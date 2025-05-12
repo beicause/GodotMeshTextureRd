@@ -211,16 +211,16 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
             vertexArray = vertexArray.AsVector2Array().Select(v => new Vector3(v.X, v.Y, 0)).ToArray();
         }
         var points = vertexArray.AsVector3Array().SelectMany<Vector3, float>(v => { return [v.X, v.Y, v.Z]; }).ToArray();
-        var pointsBytes = CastSpan<float, byte>(points);
+        var pointsBytes = MemoryMarshal.Cast<float, byte>(points);
         var indices = indexArray.AsInt32Array();
         if (indices.Length > 0)
         {
-            var indicesBytes = CastSpan<int, byte>(indices);
+            var indicesBytes = MemoryMarshal.Cast<int, byte>(indices);
             IndexBufferRid = Rd.IndexBufferCreate((uint)indices.Length, RD.IndexBufferFormat.Uint32, indicesBytes.ToArray());
             IndexArrayRid = Rd.IndexArrayCreate(IndexBufferRid, 0, (uint)indices.Length);
         }
         var uvs = uvArray.AsVector2Array().SelectMany<Vector2, float>(v => [v.X, v.Y]).ToArray();
-        var uvBytes = CastSpan<float, byte>(uvs);
+        var uvBytes = MemoryMarshal.Cast<float, byte>(uvs);
 
         VertexBufferPosRid = Rd.VertexBufferCreate((uint)pointsBytes.Length, pointsBytes.ToArray());
         VertexBufferUvRid = Rd.VertexBufferCreate((uint)uvBytes.Length, uvBytes.ToArray());
@@ -289,13 +289,20 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         {
             return;
         }
-        var xformArray = new float[] {
-            Projection[0][0], Projection[0][1], Projection[0][2], Projection[0][3],
-            Projection[1][0], Projection[1][1], Projection[1][2], Projection[1][3],
-            Projection[2][0], Projection[2][1], Projection[2][2], Projection[2][3],
-            Projection[3][0], Projection[3][1], Projection[3][2], Projection[3][3]
-        };
-        var xformBytes = CastSpan<float, byte>(xformArray);
+        // If using Transform3D instead of Projection:
+        // ReadOnlySpan<float> xformArray = [
+        //     Transform[0,0], Transform[0,1], Transform[0,2],0,
+        //     Transform[1,0], Transform[1,1], Transform[1,2],0,
+        //     Transform[2,0], Transform[2,1], Transform[2,2],0,
+        //     Transform[3,0], Transform[3,1], Transform[3,2],1,
+        // ];
+        ReadOnlySpan<float> xformArray = [
+            Projection[0,0], Projection[0,1], Projection[0,2], Projection[0,3],
+            Projection[1,0], Projection[1,1], Projection[1,2], Projection[1,3],
+            Projection[2,0], Projection[2,1], Projection[2,2], Projection[2,3],
+            Projection[3,0], Projection[3,1], Projection[3,2], Projection[3,3]
+        ];
+        var xformBytes = MemoryMarshal.Cast<float, byte>(xformArray);
 
         var drawList = Rd.DrawListBegin(FrameBufferRid, RD.DrawFlags.ClearColorAll, [ClearColor]);
         Rd.DrawListBindRenderPipeline(drawList, PipelineRid);
@@ -331,10 +338,5 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
     public void OnAfterDeserialize()
     {
         SamplerRid = Rd.SamplerCreate(new());
-    }
-
-    private static ReadOnlySpan<TTo> CastSpan<TFrom, TTo>(TFrom[] source) where TTo : struct where TFrom : struct
-    {
-        return MemoryMarshal.Cast<TFrom, TTo>(source);
     }
 }
