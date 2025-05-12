@@ -16,6 +16,7 @@ Mesh = SubResource("PrismMesh_kek77")
 BaseTexture = ExtResource("1_7mycd")
 Projection = Projection(-0.605, -1.285, 0, 0, 1.09, -1.67, 0.11, 0, 0.755, 0.035, 1.2, 0, 0.025, -0.26, 0, 1.355)
 GlslFile = ExtResource("2_272bh")
+GenerateMipmaps = false
 metadata/_custom_type_script = "uid://delyovxoqvijt"
 
 [sub_resource type="TorusMesh" id="TorusMesh_lquwl"]
@@ -30,6 +31,7 @@ Mesh = SubResource("TorusMesh_lquwl")
 BaseTexture = ExtResource("1_7mycd")
 Projection = Projection(-0.71, -0.91, 0.5, 0.01, 0.25, 1.53, 0.315, 0, 1.43, -0.135, 0.48, 0.14, 0.085, 0.02, 0.75, 1.845)
 GlslFile = ExtResource("2_272bh")
+GenerateMipmaps = true
 metadata/_custom_type_script = "uid://delyovxoqvijt"
 
 [sub_resource type="QuadMesh" id="QuadMesh_1bvp3"]
@@ -44,6 +46,7 @@ Mesh = SubResource("QuadMesh_1bvp3")
 BaseTexture = ExtResource("1_7mycd")
 Projection = Projection(-1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
 GlslFile = ExtResource("2_272bh")
+GenerateMipmaps = false
 metadata/_custom_type_script = "uid://delyovxoqvijt"
 
 [sub_resource type="Gradient" id="Gradient_1bvp3"]
@@ -66,6 +69,7 @@ Mesh = SubResource("TextMesh_7mycd")
 BaseTexture = SubResource("GradientTexture2D_lquwl")
 Projection = Projection(1.095, 0, 0, 0, 0, -5.53, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1)
 GlslFile = ExtResource("2_272bh")
+GenerateMipmaps = true
 metadata/_custom_type_script = "uid://cdfq6x7v36k1e"
 
 [node name="Node2D" type="Node2D"]

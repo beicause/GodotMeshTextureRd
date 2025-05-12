@@ -8,8 +8,7 @@ using RD = Godot.RenderingDevice;
 using RS = Godot.RenderingServer;
 
 
-[GlobalClass]
-[Tool]
+[GlobalClass, Tool]
 public partial class MeshTextureRd : Texture2D, ISerializationListener
 {
     private readonly RD Rd = RS.GetRenderingDevice();
@@ -96,8 +95,19 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
             if (field != null) field.Changed += QueueUpdateShader;
         }
     } = GD.Load<RDShaderFile>("res://glsl/base_texture.glsl");
+    [Export]
+    public bool GenerateMipmaps
+    {
+        get; set
+        {
+            field = value;
+            QueueUpdatePipeline();
+        }
+    } = false;
 
     private bool updateQueued = false;
+    private RDTextureFormat texFormat = new();
+    private RDTextureView texView = new();
 
     public void Update()
     {
@@ -214,11 +224,12 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         var vertexCount = (uint)vertexArray3.Length;
         var vertexArrayBuffer = vertexArray3.SelectMany<Vector3, float>(v => { return [v.X, v.Y, v.Z]; }).ToArray();
         var vertexBytes = MemoryMarshal.Cast<float, byte>(vertexArrayBuffer);
+        var isIndex16 = vertexCount <= 0xffff;
         var indices = indexArray.AsInt32Array();
+        var indices16 = isIndex16 ? indices.Select(i => (short)i).ToArray() : [];
         if (indices.Length > 0)
         {
-            var indicesBytes = MemoryMarshal.Cast<int, byte>(indices);
-            var isIndex16 = vertexCount <= 0xffff;
+            var indicesBytes = isIndex16 ? MemoryMarshal.Cast<short, byte>(indices16) : MemoryMarshal.Cast<int, byte>(indices);
             IndexBufferRid = Rd.IndexBufferCreate((uint)indices.Length, isIndex16 ? RD.IndexBufferFormat.Uint16 : RD.IndexBufferFormat.Uint32, indicesBytes.ToArray());
             IndexArrayRid = Rd.IndexArrayCreate(IndexBufferRid, 0, (uint)indices.Length);
         }
@@ -243,13 +254,12 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         {
             return;
         }
-        var texFormat = new RDTextureFormat();
-        var texView = new RDTextureView();
         texFormat.TextureType = RD.TextureType.Type2D;
         texFormat.Width = (uint)Size.X;
         texFormat.Height = (uint)Size.Y;
         texFormat.Format = RD.DataFormat.R8G8B8A8Unorm;
-        texFormat.UsageBits = RD.TextureUsageBits.SamplingBit | RD.TextureUsageBits.ColorAttachmentBit;
+        texFormat.Mipmaps = GenerateMipmaps ? GetImageRequiredMipmaps(texFormat.Width, texFormat.Height, 0) : 1; ;
+        texFormat.UsageBits = RD.TextureUsageBits.SamplingBit | RD.TextureUsageBits.ColorAttachmentBit | RD.TextureUsageBits.CanCopyToBit | RD.TextureUsageBits.CanCopyFromBit;
 
         FrameBufferTextureRid = Rd.TextureCreate(texFormat, texView);
 
@@ -315,6 +325,54 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         Rd.DrawListSetPushConstant(drawList, xformBytes, (uint)xformBytes.Length);
         Rd.DrawListDraw(drawList, IndexArrayRid.IsValid, 1);
         Rd.DrawListEnd();
+        if (GenerateMipmaps) CreateMipmaps();
+    }
+
+    private static uint GetImageRequiredMipmaps(uint p_width, uint p_height, uint p_depth)
+    {
+        uint w = p_width;
+        uint h = p_height;
+        uint d = p_depth;
+        uint mipmaps = 1;
+        while (true)
+        {
+            if (w == 1 && h == 1 && d == 1) break;
+            w = Math.Max(1u, w >> 1);
+            h = Math.Max(1u, h >> 1);
+            d = Math.Max(1u, d >> 1);
+            mipmaps++;
+        }
+        return mipmaps;
+    }
+
+    private void CreateMipmaps()
+    {
+        if (!FrameBufferTextureRid.IsValid)
+        {
+            return;
+        }
+        var img = Image.CreateFromData(Size.X, Size.Y, true, Image.Format.Rgba8, Rd.TextureGetData(FrameBufferTextureRid, 0));
+        img.GenerateMipmaps();
+        ReadOnlySpan<byte> data = img.GetData();
+        var fmt = Rd.TextureGetFormat(FrameBufferTextureRid);
+        var mipmapCount = fmt.Mipmaps;
+        fmt.Mipmaps = 1;
+        for (int i = 1; i < mipmapCount; i++)
+        {
+            var mipmapSize = new Vector2I(Math.Max(1, Size.X / (1 << i)), Math.Max(1, Size.Y / (1 << i)));
+            fmt.Width = (uint)mipmapSize.X;
+            fmt.Height = (uint)mipmapSize.Y;
+            var start = (int)img.GetMipmapOffset(i);
+            var d = data.Slice(start, mipmapSize.X * mipmapSize.Y * 4);
+            var tex = Rd.TextureCreate(fmt, texView, [d.ToArray()]);
+
+            Error err = Rd.TextureCopy(tex, FrameBufferTextureRid, Vector3.Zero, Vector3.Zero, new Vector3(mipmapSize.X, mipmapSize.Y, 0), 0, (uint)i, 0, 0);
+            if (err != Error.Ok)
+            {
+                GD.PushError("Failed to generate mipmaps: " + err.ToString());
+                return;
+            }
+        }
     }
 
     public override Rid _GetRid()
