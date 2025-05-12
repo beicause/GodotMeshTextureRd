@@ -111,6 +111,11 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
 
     public void Update()
     {
+        if (_meshDirty)
+        {
+            ResetVertex();
+            _meshDirty = false;
+        }
         if (_shaderDirty)
         {
             ResetShader();
@@ -127,11 +132,6 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         {
             ResetUniform();
             _uniformSetDirty = false;
-        }
-        if (_meshDirty)
-        {
-            ResetVertex();
-            _meshDirty = false;
         }
         DrawList();
         EmitChanged();
@@ -218,7 +218,8 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         if (vertexArray.VariantType == Variant.Type.PackedVector2Array)
         {
             _is2DMesh = true;
-            vertexArray = vertexArray.AsVector2Array().Select(v => new Vector3(v.X, v.Y, 0)).ToArray();
+            // 2D Mesh needs to be downscaled to be visible in normal projection.
+            vertexArray = vertexArray.AsVector2Array().Select(v => new Vector3(v.X, v.Y, 0) / 100).ToArray();
         }
         var vertexArray3 = vertexArray.AsVector3Array();
         var vertexCount = (uint)vertexArray3.Length;
@@ -248,6 +249,10 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         ShaderRid = Rd.ShaderCreateFromSpirV(shaderSpirv);
     }
 
+    private RDPipelineRasterizationState pipelineRasterizationState = new() { FrontFace = RD.PolygonFrontFace.CounterClockwise, CullMode = RD.PolygonCullMode.Back };
+    private RDPipelineMultisampleState pipelineMultisampleState = new();
+    private RDPipelineDepthStencilState pipelineDepthStencilState = new();
+
     private void ResetPipeline()
     {
         if (GlslFile == null)
@@ -268,15 +273,17 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
 
         FrameBufferRid = Rd.FramebufferCreate([FrameBufferTextureRid]);
 
+        pipelineRasterizationState.CullMode = _is2DMesh ? RD.PolygonCullMode.Front : RD.PolygonCullMode.Back;
+
         PipelineRid = Rd.RenderPipelineCreate(
                    ShaderRid,
                    Rd.FramebufferGetFormat(FrameBufferRid),
                    _vertexFormat,
                    RD.RenderPrimitive.Triangles,
-                   new RDPipelineRasterizationState { FrontFace = RD.PolygonFrontFace.CounterClockwise, CullMode = _is2DMesh ? RD.PolygonCullMode.Disabled : RD.PolygonCullMode.Back },
-                   new RDPipelineMultisampleState(),
-                   new RDPipelineDepthStencilState(),
-                   blend
+                    pipelineRasterizationState,
+                    pipelineMultisampleState,
+                    pipelineDepthStencilState,
+                    blend
                );
     }
 
