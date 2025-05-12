@@ -210,22 +210,25 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
             _is2DMesh = true;
             vertexArray = vertexArray.AsVector2Array().Select(v => new Vector3(v.X, v.Y, 0)).ToArray();
         }
-        var points = vertexArray.AsVector3Array().SelectMany<Vector3, float>(v => { return [v.X, v.Y, v.Z]; }).ToArray();
-        var pointsBytes = MemoryMarshal.Cast<float, byte>(points);
+        var vertexArray3 = vertexArray.AsVector3Array();
+        var vertexCount = (uint)vertexArray3.Length;
+        var vertexArrayBuffer = vertexArray3.SelectMany<Vector3, float>(v => { return [v.X, v.Y, v.Z]; }).ToArray();
+        var vertexBytes = MemoryMarshal.Cast<float, byte>(vertexArrayBuffer);
         var indices = indexArray.AsInt32Array();
         if (indices.Length > 0)
         {
             var indicesBytes = MemoryMarshal.Cast<int, byte>(indices);
-            IndexBufferRid = Rd.IndexBufferCreate((uint)indices.Length, RD.IndexBufferFormat.Uint32, indicesBytes.ToArray());
+            var isIndex16 = vertexCount <= 0xffff;
+            IndexBufferRid = Rd.IndexBufferCreate((uint)indices.Length, isIndex16 ? RD.IndexBufferFormat.Uint16 : RD.IndexBufferFormat.Uint32, indicesBytes.ToArray());
             IndexArrayRid = Rd.IndexArrayCreate(IndexBufferRid, 0, (uint)indices.Length);
         }
         var uvs = uvArray.AsVector2Array().SelectMany<Vector2, float>(v => [v.X, v.Y]).ToArray();
         var uvBytes = MemoryMarshal.Cast<float, byte>(uvs);
 
-        VertexBufferPosRid = Rd.VertexBufferCreate((uint)pointsBytes.Length, pointsBytes.ToArray());
+        VertexBufferPosRid = Rd.VertexBufferCreate((uint)vertexBytes.Length, vertexBytes.ToArray());
         VertexBufferUvRid = Rd.VertexBufferCreate((uint)uvBytes.Length, uvBytes.ToArray());
         var vertexBuffers = new Godot.Collections.Array<Rid> { VertexBufferPosRid, VertexBufferUvRid };
-        VertexArrayRid = Rd.VertexArrayCreate((uint)(points.Length / 3), _vertexFormat, vertexBuffers);
+        VertexArrayRid = Rd.VertexArrayCreate(vertexCount, _vertexFormat, vertexBuffers);
     }
 
     private void ResetShader()
