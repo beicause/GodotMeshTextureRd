@@ -59,7 +59,7 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
     private bool _uniformSetDirty = false;
     [Export] public Vector2I Size { get; set { field = value; QueueUpdatePipeline(); } } = new(256, 256);
     [Export]
-    public Color ClearColor { get; set { field = value; QueueUpdate(); } } = Colors.Transparent;
+    public Color BgColor { get; set { field = value; QueueUpdate(); } } = Colors.Transparent;
     [Export]
     public Mesh Mesh
     {
@@ -317,7 +317,7 @@ public partial class MeshTextureRd : Texture2D, ISerializationListener
         ];
         var xformBytes = MemoryMarshal.Cast<float, byte>(xformArray);
 
-        var drawList = Rd.DrawListBegin(FrameBufferRid, RD.DrawFlags.ClearColorAll, [ClearColor]);
+        var drawList = Rd.DrawListBegin(FrameBufferRid, RD.DrawFlags.ClearColorAll, [BgColor]);
         Rd.DrawListBindRenderPipeline(drawList, PipelineRid);
         Rd.DrawListBindVertexArray(drawList, VertexArrayRid);
         Rd.DrawListBindUniformSet(drawList, UniformSetRid, 0);
